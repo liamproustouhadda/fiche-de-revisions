@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fiches de révision IA</title>
+<style>
+:root{--bg:#faf8f4;--card:#fff;--ink:#1f2430;--mut:#6b7280;--acc:#4f46e5;--acc2:#eef0ff;--bd:#e6e2d9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161c;--card:#1d2029;--ink:#eceef4;--mut:#9aa1b2;--acc:#8b93ff;--acc2:#262a3d;--bd:#2c3040}}
+:root[data-theme="dark"]{--bg:#14161c;--card:#1d2029;--ink:#eceef4;--mut:#9aa1b2;--acc:#8b93ff;--acc2:#262a3d;--bd:#2c3040}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.7rem;margin:.2em 0}
+.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+label{font-weight:600;font-size:.9rem;display:block;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:140px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;background:var(--acc);color:#fff;font-weight:600}
+button.sec{background:var(--acc2);color:var(--acc)}
+button:disabled{opacity:.5;cursor:wait}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+h2{font-size:1.05rem;margin:0 0 8px;color:var(--acc)}
+.fiche h3{font-size:1.4rem;margin:0 0 6px}
+.pt{padding:8px 0;border-top:1px dashed var(--bd)}.pt:first-of-type{border-top:0}
+.def b{color:var(--acc)}
+.retenir{background:var(--acc2);border-radius:10px;padding:12px;font-weight:600}
+details{border:1px solid var(--bd);border-radius:10px;padding:8px 12px;margin:6px 0}
+summary{cursor:pointer;font-weight:600}
+ul{margin:0;padding-left:20px}
+.hist button{margin:3px 6px 3px 0}
+.err{color:#c0392b}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.th{position:relative;border:1px solid var(--bd);border-radius:10px;padding:4px 8px;font-size:.85rem;background:var(--bg);display:flex;align-items:center;gap:6px}
+.th img{width:44px;height:44px;object-fit:cover;border-radius:6px}
+.th button{padding:0 6px;background:none;color:var(--mut)}
+.fc{min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:1.15rem;padding:20px;border:2px solid var(--acc);border-radius:14px;background:var(--acc2);cursor:pointer;margin:10px 0}
+.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+.mut{color:var(--mut);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<h1>📚 Fiches de révision IA</h1>
+<p class="sub">Colle ton cours ou indique un sujet : l'IA te prépare une fiche complète avec points clés, définitions, astuces et mini-quiz.</p>
+
+<div class="card">
+  <label for="sujet">Sujet / matière</label>
+  <input id="sujet" placeholder="Ex : La Révolution française, les dérivées, la photosynthèse…">
+  <label for="cours">Ton cours (optionnel, colle-le ici)</label>
+  <textarea id="cours" placeholder="Si vide, l'IA s'appuie sur ses connaissances générales sur le sujet."></textarea>
+  <label for="fichiers">Photos ou fichiers (photo de cours, capture, .txt, .md, .csv)</label>
+  <input id="fichiers" type="file" multiple accept="image/*,.txt,.md,.csv,text/plain">
+  <div id="thumbs" class="thumbs"></div>
+  <div class="row">
+    <div><label for="niveau">Niveau</label>
+      <select id="niveau"><option>Collège</option><option selected>Lycée</option><option>Prépa / Licence</option><option>Master / Pro</option></select></div>
+    <div><label for="detail">Détail</label>
+      <select id="detail"><option value="synthétique">Synthétique</option><option value="complète" selected>Complète</option><option value="approfondie">Approfondie</option></select></div>
+  </div>
+  <div class="acts"><button id="go">✨ Générer la fiche</button></div>
+  <p id="msg" class="mut"></p>
+</div>
+
+<div id="out"></div>
+<div id="study"></div>
+<div id="histbox" class="card hist" style="display:none"><h2>Mes fiches enregistrées</h2><div id="hist"></div></div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let current=null, sample=null, downloads=null, imgOK=false;
+let imgs=[], txts=[];
+$("fichiers").onchange=async e=>{
+  for(const f of e.target.files){
+    if(f.type.startsWith("image/")){
+      if(!imgOK){$("msg").textContent="Les photos ne sont pas prises en charge dans cette vue.";continue;}
+      if(imgs.length>=5){$("msg").textContent="5 photos maximum.";continue;}
+      imgs.push(f);
+    }else if(/\.(txt|md|csv)$/i.test(f.name)||f.type==="text/plain"){
+      txts.push({name:f.name,text:(await f.text()).slice(0,30000)});
+    }else $("msg").textContent="Format non géré : "+f.name+" (PDF non supporté, utilise une photo ou du texte).";
+  }
+  e.target.value="";drawThumbs();
+};
+function drawThumbs(){
+  const t=$("thumbs");t.innerHTML="";
+  imgs.forEach((f,i)=>{const d=document.createElement("div");d.className="th";const im=document.createElement("img");im.src=URL.createObjectURL(f);const b=document.createElement("button");b.textContent="✕";b.onclick=()=>{imgs.splice(i,1);drawThumbs();};d.append(im,b);t.append(d);});
+  txts.forEach((f,i)=>{const d=document.createElement("div");d.className="th";d.append("📄 "+f.name);const b=document.createElement("button");b.textContent="✕";b.onclick=()=>{txts.splice(i,1);drawThumbs();};d.append(b);t.append(d);});
+}
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+(async()=>{
+  try{ if(window.claude){ sample=await claude.use("sample"); downloads=await claude.use("downloads"); try{const l=await sample.limits();imgOK=!!l.images;if(imgOK)$("fichiers").accept="image/*,.txt,.md,.csv,text/plain";}catch(e){} } }catch(e){}
+  if(!sample) $("msg").textContent="⚠️ La génération IA n'est pas disponible dans cette vue.";
+})();
+
+function loadHist(){try{return JSON.parse(localStorage.getItem("fiches")||"[]")}catch(e){return[]}}
+function saveHist(l){try{localStorage.setItem("fiches",JSON.stringify(l))}catch(e){}}
+function renderHist(){
+  const l=loadHist(); $("histbox").style.display=l.length?"block":"none";
+  $("hist").innerHTML=l.map((f,i)=>`<button class="sec" data-i="${i}">${esc(f.titre)}</button><button class="sec" data-d="${i}" title="Supprimer">🗑</button>`).join("");
+  $("hist").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const L=loadHist();
+    if(b.dataset.d!==undefined){L.splice(+b.dataset.d,1);saveHist(L);renderHist();}
+    else{current=L[+b.dataset.i];render(current);}
+  });
+}
+
+function render(f){
+  const L=(a,fn)=>(a||[]).map(fn).join("");
+  $("out").innerHTML=`<div class="card fiche">
+    <h3>${esc(f.titre)}</h3><p>${esc(f.resume)}</p>
+    <h2>🎯 Points clés</h2>${L(f.points_cles,p=>`<div class="pt"><b>${esc(p.titre)}</b><br>${esc(p.detail)}</div>`)}
+    ${f.definitions?.length?`<h2 style="margin-top:16px">📖 Définitions</h2>${L(f.definitions,d=>`<div class="pt def"><b>${esc(d.terme)}</b> : ${esc(d.definition)}</div>`)}`:""}
+    ${f.exemples?.length?`<h2 style="margin-top:16px">💡 Exemples</h2><ul>${L(f.exemples,e=>`<li>${esc(e)}</li>`)}</ul>`:""}
+    ${f.astuces?.length?`<h2 style="margin-top:16px">🧠 Astuces mémo</h2><ul>${L(f.astuces,e=>`<li>${esc(e)}</li>`)}</ul>`:""}
+    <h2 style="margin-top:16px">✅ À retenir</h2><div class="retenir">${esc(f.a_retenir)}</div>
+    <h2 style="margin-top:16px">❓ Mini-quiz</h2>${L(f.quiz,q=>`<details><summary>${esc(q.q)}</summary><p>${esc(q.r)}</p></details>`)}
+    <div class="acts"><button id="sv" class="sec">💾 Enregistrer</button><button id="dl" class="sec">⬇️ Télécharger (.md)</button><button id="cp" class="sec">📋 Copier</button><button id="fl" class="sec">🃏 Réviser (flashcards)</button></div>
+  </div>`;
+  $("fl").onclick=()=>study(f);
+  $("sv").onclick=()=>{const l=loadHist().filter(x=>x.titre!==f.titre);l.unshift(f);saveHist(l.slice(0,30));renderHist();$("sv").textContent="✔ Enregistrée";};
+  $("cp").onclick=async()=>{try{await navigator.clipboard.writeText(md(f));$("cp").textContent="✔ Copié";}catch(e){$("cp").textContent="Copie impossible";}};
+  $("dl").onclick=async()=>{
+    if(!downloads){$("dl").textContent="Indisponible ici";return;}
+    try{await downloads.save({filename:(f.titre||"fiche").replace(/[^\w\-]+/g,"_")+".md",data:md(f)});}catch(e){}
+  };
+  $("out").scrollIntoView({behavior:"smooth"});
+}
+
+function study(f){
+  const cards=[...(f.definitions||[]).map(d=>({q:d.terme+" ?",r:d.definition})),...(f.quiz||[]).map(x=>({q:x.q,r:x.r}))].sort(()=>Math.random()-.5);
+  if(!cards.length)return;
+  let i=0,ok=0,show=false;
+  const st=$("study");
+  const draw=()=>{
+    if(i>=cards.length){st.innerHTML=`<div class="card"><h2>Résultat</h2><p style="font-size:1.4rem"><b>${ok} / ${cards.length}</b> cartes maîtrisées (${Math.round(100*ok/cards.length)} %)</p><div class="acts"><button id="rs">🔁 Recommencer</button><button id="cl" class="sec">Fermer</button></div></div>`;
+      $("rs").onclick=()=>study(f);$("cl").onclick=()=>st.innerHTML="";return;}
+    const c=cards[i];
+    st.innerHTML=`<div class="card"><h2>🃏 Carte ${i+1} / ${cards.length}</h2><div class="bar"><i style="width:${100*i/cards.length}%"></i></div>
+      <div class="fc" id="fcc">${esc(show?c.r:c.q)}</div>
+      <p class="mut" style="text-align:center">${show?"Tu le savais ?":"Touche la carte pour voir la réponse"}</p>
+      ${show?`<div class="acts" style="justify-content:center"><button id="y">✅ Je savais</button><button id="n" class="sec">❌ Pas encore</button></div>`:""}
+      <div class="acts"><button id="cl" class="sec">Fermer</button></div></div>`;
+    $("fcc").onclick=()=>{show=!show;draw();};
+    $("cl").onclick=()=>st.innerHTML="";
+    if(show){$("y").onclick=()=>{ok++;i++;show=false;draw();};$("n").onclick=()=>{i++;show=false;draw();};}
+  };
+  draw();st.scrollIntoView({behavior:"smooth"});
+}
+
+function md(f){
+  return `# ${f.titre}\n\n${f.resume}\n\n## Points clés\n`+(f.points_cles||[]).map(p=>`- **${p.titre}** : ${p.detail}`).join("\n")
+  +`\n\n## Définitions\n`+(f.definitions||[]).map(d=>`- **${d.terme}** : ${d.definition}`).join("\n")
+  +`\n\n## Exemples\n`+(f.exemples||[]).map(e=>`- ${e}`).join("\n")
+  +`\n\n## Astuces mémo\n`+(f.astuces||[]).map(e=>`- ${e}`).join("\n")
+  +`\n\n## À retenir\n${f.a_retenir}\n\n## Quiz\n`+(f.quiz||[]).map((q,i)=>`${i+1}. ${q.q}\n   → ${q.r}`).join("\n");
+}
+
+$("go").onclick=async()=>{
+  const sujet=$("sujet").value.trim(), cours=$("cours").value.trim();
+  if(!sujet&&!cours&&!imgs.length&&!txts.length){$("msg").textContent="Indique un sujet, colle ton cours ou ajoute un fichier.";return;}
+  if(!sample){$("msg").textContent="⚠️ IA indisponible dans cette vue.";return;}
+  $("go").disabled=true;$("msg").className="mut";$("msg").textContent="Génération en cours… (jusqu'à une minute)";
+  const prompt=`Tu es un excellent professeur. Crée une fiche de révision en français.
+Sujet : ${sujet||"(déduire du cours)"}
+Niveau : ${$("niveau").value}. Détail : ${$("detail").value}.
+${(cours||txts.length)?"Base-toi sur ce cours :\n"+cours.slice(0,12000)+txts.map(t=>"\n\n--- "+t.name+" ---\n"+t.text).join("").slice(0,60000):"Appuie-toi sur tes connaissances."}
+${imgs.length?"Des photos de cours sont jointes : lis-les attentivement et utilise leur contenu.":""}
+Réponds UNIQUEMENT par un JSON de la forme :
+{"titre":str,"resume":str (2-3 phrases),"points_cles":[{"titre":str,"detail":str}] (5-10),"definitions":[{"terme":str,"definition":str}],"exemples":[str],"astuces":[str] (moyens mnémotechniques),"a_retenir":str,"quiz":[{"q":str,"r":str}] (5 questions)}`;
+  try{
+    current=await sample.json(prompt,{modelTier:"default",cache:false,...(imgs.length?{images:imgs}:{})});
+    render(current);$("msg").textContent="";
+  }catch(e){
+    $("msg").className="err";
+    if(e && (e.code === "not_enough_credits" || e.code === "out_of_credits" || (e.message && e.message.toLowerCase().includes("credit")))){
+      $("msg").textContent="❌ Plus de crédits disponibles. Veuillez recharger votre compte pour continuer.";
+    } else if(e && e.code==="not_granted"){
+      $("msg").textContent="Autorisation refusée : accepte la demande pour utiliser l'IA.";
+    } else {
+      $("msg").textContent="Erreur de génération, réessaie dans un instant.";
+    }
+  }
+  $("go").disabled=false;
+};
+renderHist();
+</script>
+</body>
+</html>
